@@ -2,268 +2,39 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PLURIBUS: THE GAP RUN</title>
+    <title>PLURIBUS: GLOBAL INTERCEPT</title>
     <style>
-        /* --- THE AESTHETIC: RETRO TERMINAL --- */
-        body {
-            background-color: #050505;
-            color: #ff4500; /* Manousos Orange */
-            font-family: 'Courier New', Courier, monospace;
-            margin: 0;
-            overflow: hidden;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-        }
-
-        /* The Container */
-        #terminal {
-            position: relative;
-            width: 90vw;
-            max-width: 600px;
-            height: 80vh;
-            border: 2px solid #333;
-            background: radial-gradient(circle, #111 0%, #000 90%);
-            box-shadow: 0 0 20px rgba(0,0,0,0.8);
-        }
-
-        /* The Map Layer */
-        svg {
-            width: 100%;
-            height: 100%;
-            filter: drop-shadow(0 0 4px rgba(255, 69, 0, 0.3));
-        }
-
-        /* The UI Overlay */
-        #hud {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            pointer-events: none; /* Let clicks pass through to map if needed */
-        }
+        body { margin: 0; background: #000; overflow: hidden; font-family: "Courier New", monospace; }
         
-        h1 { margin: 0; font-size: 1.2rem; letter-spacing: 2px; border-bottom: 1px solid #333; padding-bottom: 5px; margin-bottom: 10px; }
-        .stat-row { font-size: 0.9rem; margin-bottom: 4px; display: flex; justify-content: space-between; width: 200px; }
-        .val { font-weight: bold; }
+        /* CRT Overlay Effect for that "Analog" feel */
+        #crt-overlay {
+            position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 2px, 3px 100%;
+            pointer-events: none; z-index: 10;
+        }
 
-        /* Console Output at bottom */
-        #console {
-            position: absolute;
-            bottom: 20px;
-            left: 20px;
-            right: 20px;
-            height: 80px;
-            font-size: 0.8rem;
-            color: #888;
-            border-top: 1px dashed #333;
-            padding-top: 10px;
-            display: flex;
-            flex-direction: column-reverse; /* Newest logs at bottom */
-            overflow: hidden;
+        /* The UI HUD */
+        #hud {
+            position: absolute; bottom: 30px; left: 30px;
+            color: #ff4500; z-index: 11;
+            background: rgba(0,0,0,0.8); padding: 20px;
+            border-left: 4px solid #ff4500;
+            width: 300px;
+        }
+
+        h1 { margin: 0 0 10px 0; font-size: 18px; letter-spacing: 3px; color: #fff; }
+        .data-row { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 14px; }
+        .val { font-weight: bold; color: #ff4500; }
+        .hive-text { color: #00ffff !important; text-shadow: 0 0 5px #00ffff; }
+        
+        #log-window {
+            margin-top: 15px; height: 100px; overflow-y: hidden;
+            border-top: 1px dashed #555; padding-top: 10px;
+            font-size: 12px; opacity: 0.8; color: #aaa;
         }
 
         /* Start Button */
-        #start-btn {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            padding: 15px 30px;
-            background: #ff4500;
-            color: #000;
-            border: none;
-            font-family: inherit;
-            font-weight: bold;
-            font-size: 1rem;
-            cursor: pointer;
-            z-index: 100;
-            box-shadow: 0 0 15px #ff4500;
-        }
-        #start-btn:hover { background: #fff; }
-
-        /* --- ANIMATION CLASSES --- */
-        .hive-mode {
-            filter: contrast(1.5) hue-rotate(180deg) !important; /* Instant turn to Cyan/Blue */
-            transition: filter 0.2s linear;
-        }
-        
-        .hidden { display: none; }
-        
-        /* The Glitch Effect for the Gap */
-        @keyframes glitch {
-            0% { transform: translate(0) }
-            20% { transform: translate(-2px, 2px) }
-            40% { transform: translate(-2px, -2px) }
-            60% { transform: translate(2px, 2px) }
-            80% { transform: translate(2px, -2px) }
-            100% { transform: translate(0) }
-        }
-        .glitching { animation: glitch 0.2s infinite; }
-
-    </style>
-</head>
-<body>
-
-    <div id="terminal">
-        <svg viewBox="0 0 400 600" id="map-svg">
-            <path d="
-                M 80,100 L 250,80 L 320,150 L 280,250 L 220,300  
-                L 240,310 L 290,320 L 320,400 L 280,550 L 200,580 L 150,450 L 180,350 L 220,300
-                " 
-                fill="none" stroke="#222" stroke-width="2" />
-            
-            <line x1="0" y1="150" x2="400" y2="150" stroke="#111" />
-            <line x1="0" y1="300" x2="400" y2="300" stroke="#111" />
-            <line x1="0" y1="450" x2="400" y2="450" stroke="#111" />
-
-            <circle cx="260" cy="480" r="3" fill="#444" id="pt-start" />
-            <text x="270" y="485" font-size="10" fill="#444">ASUNCION</text>
-
-            <circle cx="220" cy="300" r="3" fill="#444" id="pt-gap" />
-            <text x="160" y="305" font-size="10" fill="#444" id="txt-gap">DARIEN</text>
-
-            <circle cx="150" cy="180" r="3" fill="#444" id="pt-end" />
-            <text x="100" y="180" font-size="10" fill="#444" id="txt-end">ALBUQUERQUE</text>
-
-            <path id="path-drive" d="M 260,480 Q 240,400 220,300" fill="none" stroke="#ff4500" stroke-width="2" stroke-dasharray="0 1000" />
-            
-            <path id="path-airlift" d="M 220,300 Q 250,250 150,180" fill="none" stroke="#fff" stroke-width="1.5" stroke-dasharray="0 1000" opacity="0" />
-
-            <circle id="player" cx="260" cy="480" r="4" fill="#ff4500" />
-        </svg>
-
-        <div id="hud">
-            <h1>GAP_RUN_V1</h1>
-            <div class="stat-row"><span>MODE:</span> <span id="mode-val" class="val">MANUAL</span></div>
-            <div class="stat-row"><span>VITALS:</span> <span id="vitals-val" class="val">100%</span></div>
-            <div class="stat-row"><span>DIST:</span> <span id="dist-val" class="val">0000</span></div>
-        </div>
-
-        <div id="console"></div>
-
-        <button id="start-btn">INITIATE DRIVE</button>
-    </div>
-
-    <script>
-        const btn = document.getElementById('start-btn');
-        const terminal = document.getElementById('terminal');
-        const consoleDiv = document.getElementById('console');
-        const player = document.getElementById('player');
-        
-        // Audio simulation (Visual only for now)
-        function log(msg) {
-            const line = document.createElement('div');
-            line.textContent = `> ${msg}`;
-            consoleDiv.prepend(line);
-        }
-
-        btn.addEventListener('click', () => {
-            btn.style.display = 'none';
-            startSequence();
-        });
-
-        async function startSequence() {
-            log("IGNITION CONFIRMED.");
-            log("TARGET: THE GAP.");
-
-            // STAGE 1: THE DRIVE
-            // We animate the stroke-dasharray of the SVG path
-            const pathDrive = document.getElementById('path-drive');
-            const totalLen = pathDrive.getTotalLength();
-            pathDrive.style.strokeDasharray = `${totalLen} ${totalLen}`;
-            pathDrive.style.strokeDashoffset = totalLen;
-
-            // Animate
-            let progress = 0;
-            const driveSpeed = 2; 
-
-            // Animation Loop 1
-            await new Promise(resolve => {
-                function step() {
-                    progress += driveSpeed;
-                    const currentOffset = totalLen - progress;
-                    pathDrive.style.strokeDashoffset = currentOffset;
-
-                    // Move the dot
-                    const point = pathDrive.getPointAtLength(progress);
-                    player.setAttribute('cx', point.x);
-                    player.setAttribute('cy', point.y);
-
-                    // Update Numbers
-                    document.getElementById('dist-val').innerText = Math.floor(progress * 10);
-
-                    if (currentOffset > 0) {
-                        requestAnimationFrame(step);
-                    } else {
-                        resolve();
-                    }
-                }
-                step();
-            });
-
-            // STAGE 2: THE GAP (Crisis)
-            log("WARNING: ROAD ENDS.");
-            log("TERRAIN IMPASSABLE.");
-            
-            document.getElementById('vitals-val').innerText = "FAILING";
-            document.getElementById('mode-val').innerText = "ON FOOT";
-            
-            // Glitch Effect
-            terminal.classList.add('glitching');
-            
-            // Pause for dramatic effect
-            await new Promise(r => setTimeout(r, 1500));
-            
-            log("VEHICLE ABANDONED.");
-            await new Promise(r => setTimeout(r, 1000));
-            log("SIGNAL LOST...");
-            
-            // STAGE 3: THE HIVE (Transformation)
-            terminal.classList.remove('glitching');
-            document.body.classList.add('hive-mode'); // Color shift to Blue/Cyan
-            
-            log("Acquiring Target...");
-            log("INTERVENTION AUTHORIZED.");
-            
-            document.getElementById('mode-val').innerText = "AIRLIFT";
-            document.getElementById('vitals-val').innerText = "STABILIZED";
-
-            // Hide old path, show new path
-            const pathAir = document.getElementById('path-airlift');
-            pathAir.style.opacity = '1';
-            const airLen = pathAir.getTotalLength();
-            pathAir.style.strokeDasharray = `${airLen} ${airLen}`;
-            pathAir.style.strokeDashoffset = airLen;
-
-            // Fast Animation Loop
-            let airProgress = 0;
-            const flightSpeed = 8; // Much faster
-
-            await new Promise(resolve => {
-                function fly() {
-                    airProgress += flightSpeed;
-                    const offset = airLen - airProgress;
-                    pathAir.style.strokeDashoffset = offset;
-
-                    const point = pathAir.getPointAtLength(airProgress);
-                    player.setAttribute('cx', point.x);
-                    player.setAttribute('cy', point.y);
-                    player.setAttribute('fill', '#fff'); // White dot
-
-                    if (offset > 0) {
-                        requestAnimationFrame(fly);
-                    } else {
-                        resolve();
-                    }
-                }
-                fly();
-            });
-
-            log("ARRIVAL: ALBUQUERQUE.");
-            log("SEQUENCE COMPLETE.");
-        }
-    </script>
-</body>
-</html>
+        #init-btn {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            padding: 20px 40px; background
