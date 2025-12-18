@@ -2,39 +2,168 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>PLURIBUS: GLOBAL INTERCEPT</title>
+    <title>PLURIBUS: TACTICAL VIEW</title>
     <style>
         body { margin: 0; background: #000; overflow: hidden; font-family: "Courier New", monospace; }
         
-        /* CRT Overlay Effect for that "Analog" feel */
-        #crt-overlay {
-            position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
-            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
-            background-size: 100% 2px, 3px 100%;
-            pointer-events: none; z-index: 10;
-        }
-
-        /* The UI HUD */
         #hud {
             position: absolute; bottom: 30px; left: 30px;
-            color: #ff4500; z-index: 11;
-            background: rgba(0,0,0,0.8); padding: 20px;
-            border-left: 4px solid #ff4500;
+            color: #00ff00; /* Hacker Green */
+            z-index: 100;
+            background: rgba(0, 20, 0, 0.9); padding: 20px;
+            border: 1px solid #00ff00;
             width: 300px;
+            pointer-events: none;
         }
 
-        h1 { margin: 0 0 10px 0; font-size: 18px; letter-spacing: 3px; color: #fff; }
+        h1 { margin: 0 0 10px 0; font-size: 18px; letter-spacing: 3px; border-bottom: 1px solid #00ff00; padding-bottom: 5px; }
         .data-row { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 14px; }
-        .val { font-weight: bold; color: #ff4500; }
-        .hive-text { color: #00ffff !important; text-shadow: 0 0 5px #00ffff; }
+        .alert { color: red; animation: blink 0.5s infinite; }
         
-        #log-window {
-            margin-top: 15px; height: 100px; overflow-y: hidden;
-            border-top: 1px dashed #555; padding-top: 10px;
-            font-size: 12px; opacity: 0.8; color: #aaa;
+        #start-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: flex; justify-content: center; align-items: center;
+            z-index: 200;
+        }
+        
+        button {
+            padding: 15px 30px; background: #00ff00; color: #000; border: none;
+            font-family: inherit; font-weight: bold; font-size: 20px; cursor: pointer;
+        }
+        button:hover { background: #fff; }
+
+        @keyframes blink { 50% { opacity: 0; } }
+    </style>
+
+    <script src="https://unpkg.com/globe.gl"></script>
+</head>
+<body>
+
+    <div id="start-overlay">
+        <button onclick="startViz()">INITIALIZE SYSTEM</button>
+    </div>
+
+    <div id="hud">
+        <h1>TACTICAL DISPLAY</h1>
+        <div class="data-row"><span>UNIT:</span> <span>MANOUSOS</span></div>
+        <div class="data-row"><span>LOC:</span> <span id="loc">UNKNOWN</span></div>
+        <div class="data-row"><span>STATUS:</span> <span id="status">STANDBY</span></div>
+    </div>
+
+    <div id="globeViz"></div>
+
+    <script>
+        // Coords
+        const ASUNCION = { lat: -25.2637, lng: -57.5759 };
+        const DARIEN = { lat: 8.2, lng: -77.4 };
+        const ALBUQUERQUE = { lat: 35.0844, lng: -106.6504 };
+
+        // Generate a random "Cloud" of points to define the continents 
+        // (Since we aren't loading an image, we use dots to make it look cool)
+        const N_POINTS = 4000;
+        const gData = [...Array(N_POINTS).keys()].map(() => ({
+            lat: (Math.random() - 0.5) * 180,
+            lng: (Math.random() - 0.5) * 360,
+            size: Math.random() / 3,
+            color: '#004400' // Dark green background static
+        }));
+
+        let world;
+
+        function init() {
+            const elem = document.getElementById('globeViz');
+            
+            world = Globe()
+                (elem)
+                .backgroundColor('#000000')
+                // NO TEXTURES -> NO ERRORS
+                .globeImageUrl(null) 
+                .bumpImageUrl(null)
+                // Wireframe / Hologram Look
+                .showAtmosphere(true)
+                .atmosphereColor('#00ff00')
+                .atmosphereAltitude(0.2)
+                .pointsData(gData)
+                .pointAltitude(0)
+                .pointColor('color')
+                .pointRadius('size');
+
+            // Set initial camera
+            world.pointOfView({ lat: -10, lng: -60, altitude: 2.5 });
         }
 
-        /* Start Button */
-        #init-btn {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            padding: 20px 40px; background
+        // Run immediately to show the globe
+        init();
+
+        async function startViz() {
+            document.getElementById('start-overlay').style.display = 'none';
+            
+            // 1. Zoom In
+            document.getElementById('status').innerText = "TRACKING";
+            world.pointOfView({ lat: ASUNCION.lat, lng: ASUNCION.lng, altitude: 1.0 }, 2000);
+            await wait(2000);
+
+            // 2. The Drive Path (Orange)
+            const path = [
+                [ASUNCION.lat, ASUNCION.lng],
+                [-15, -60], [0, -70], [DARIEN.lat, DARIEN.lng] // Simplified curve
+            ];
+
+            document.getElementById('loc').innerText = "S. AMERICA";
+            
+            // Draw the path incrementally
+            world.pathsData([
+                { coords: path, color: 'orange' } // Simple path
+            ]);
+            world.pathColor(() => '#ff4500'); 
+            world.pathDashLength(0.1);
+            world.pathDashGap(0.05);
+            world.pathDashAnimateTime(1500);
+
+            // Move Camera
+            world.pointOfView({ lat: 0, lng: -70, altitude: 1.0 }, 3000);
+            await wait(3000);
+
+            // 3. The Crisis
+            document.getElementById('loc').innerText = "DARIEN GAP";
+            document.getElementById('status').innerText = "LOST SIGNAL";
+            document.getElementById('status').className = "alert"; // Blink Red
+
+            // Add a pulsing red ring
+            world.ringsData([{ lat: DARIEN.lat, lng: DARIEN.lng }]);
+            world.ringColor(() => 'red');
+            world.ringMaxRadius(8);
+            world.ringPropagationSpeed(5);
+            world.ringRepeatPeriod(500);
+
+            world.pointOfView({ lat: DARIEN.lat, lng: DARIEN.lng, altitude: 0.3 }, 2000);
+            await wait(2500);
+
+            // 4. The Airlift (Blue Arc)
+            document.getElementById('status').className = "";
+            document.getElementById('status').innerText = "HIVE INTERCEPT";
+            document.getElementById('status').style.color = "cyan";
+
+            // Add the Arc
+            world.arcsData([{
+                startLat: DARIEN.lat, startLng: DARIEN.lng,
+                endLat: ALBUQUERQUE.lat, endLng: ALBUQUERQUE.lng,
+                color: 'cyan'
+            }]);
+            world.arcColor(() => '#00ffff');
+            world.arcDashLength(0.5);
+            world.arcDashAnimateTime(1000);
+
+            // Fly camera
+            world.pointOfView({ lat: 20, lng: -90, altitude: 1.5 }, 2000);
+            await wait(2000);
+            
+            document.getElementById('loc').innerText = "NEW MEXICO";
+            world.pointOfView({ lat: ALBUQUERQUE.lat, lng: ALBUQUERQUE.lng, altitude: 0.5 }, 2000);
+        }
+
+        function wait(ms) { return new Promise(r => setTimeout(r, ms)); }
+    </script>
+</body>
+</html>
